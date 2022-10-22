@@ -1,0 +1,10 @@
+#!/bin/bash
+apt -y install apache2
+sed -i 's/Listen 80/Listen ${HTTP}/' /etc/apache2/ports.conf
+systemctl enable apache2
+systemctl restart apache2
+echo '<html><h1>Hello From Your Linux Web Server running on port ${HTTP}</h1></html>' > /var/www/html/index.html
+
+apt install amazon-ec2-utils -y
+apt install txt2html
+ec2-metadata | txt2html >> /var/www/html/index.html

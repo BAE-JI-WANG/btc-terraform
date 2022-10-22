@@ -11,7 +11,8 @@ terraform {
 }
 
 provider "aws" {
-  region = "ap-northeast-2" # Asia Pacific (Seoul) region
+  region  = "ap-northeast-2" # Asia Pacific (Seoul) region
+  profile = "mfa"
 }
 
 # Instances
@@ -28,7 +29,7 @@ provider "aws" {
 #   }
 # }
 
-# Security groups
+#Security groups
 resource "aws_security_group" "http" {
   name        = var.security_group_name_http
   description = "Allow http inbound traffic"
@@ -103,8 +104,8 @@ variable "security_group_name_ssh" {
 }
 
 variable "ami" {
-  type    = string
-  default = "ami-0c76973fbe0ee100c"
+  type = string
+  # default = "ami-0c76973fbe0ee100c"
 }
 
 variable "instance_type" {
@@ -131,12 +132,14 @@ variable "instance_type" {
 # }
 
 resource "aws_launch_configuration" "web" {
-  name_prefix     = "lc-web-"
-  image_id        = data.aws_ami.amazon_linux2.id
+  name_prefix = "lc-web-"
+  # image_id        = data.aws_ami.amazon_linux2.id
+  image_id        = coalesce(data.aws_ami.ubuntu.id, var.ami)
+  # image_id        = var.ami == "" ? data.aws_ami.amazon_linux2.id : var.ami # 3항 연산자
   instance_type   = var.instance_type
-  security_groups = [aws_security_group.http.id]
+  security_groups = [aws_security_group.http.id, aws_security_group.ssh.id]
   user_data       = templatefile("userdata.tftpl", { HTTP = var.server_port_http })
-  key_name        = "tfkey"
+  key_name        = aws_key_pair.deployer.key_name
 
   lifecycle {
     create_before_destroy = true
@@ -183,15 +186,21 @@ resource "aws_autoscaling_group" "web-asg" {
   }
 }
 
-data "aws_ami" "amazon_linux2" {
+data "aws_ami" "ubuntu" {
   most_recent = true
   filter {
-    name = "name"
-    values = ["amzn2-ami-kernel-5.10-hvm-2.0.20220912.1-x86_64-gp2"]
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20220912"]
   }
   filter {
-    name = "virtualization-type"
-    values = [ "hvm" ]
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
-  owners = [ "137112412989" ]
+  owners = ["099720109477"]
+}
+
+resource "aws_key_pair" "deployer" {
+  key_name_prefix   = "deployer-key"
+  public_key = file("terraform-key.pub")
+  # public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDeM3vGaMHWgquJyC9AZWeJB5LEvvM9fNueqWRK1ros0DjSADKKFV59hqCekXxgjbSHpx+c3AkdXBvIj68dzoXvf+6Q16Lfqnk0bsm8yf5g/X0a0y+oB/E8u3qazZ95M4g/1bX7Lg9DpbA2xBpcK5+FCx9g+g42qBxrUe62jmdM3LEiA5J9PIbI9zLavJyK8yh9mwfsyswnJtBHfTwcGhl4bD3MgthVK1Z/2TJQlhCCoMvnNg0vTn4e+lrXvyvN23esKcimgR3DaymRtE9Q0lMoYzW1YrJBzRSH8Ea9Im6t0n/A8fXSFwOW+O8Z2dnBKpUM5mR4ewFmjjR3xdLOs3Y5 ec2-user@ip-172-31-11-193.ap-northeast-2.compute.internal"
 }

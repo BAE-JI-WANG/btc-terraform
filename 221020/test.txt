@@ -1,0 +1,3 @@
+i-06a4ac1c651f1e2af
+i-06a4ac1c651f1e2af
+placement: ap-northeast-2a

@@ -46,3 +46,31 @@ resource "aws_security_group" "ssh" {
     "Name" = "ssh"
   }
 }
+
+resource "aws_autoscaling_group" "web-asg" {
+  name_prefix = "asg-web-"
+  launch_configuration = aws_launch_configuration.web.name
+  vpc_zone_identifier = data.aws_subnets.default.ids
+
+  min_size = 2
+  max_size = 10
+
+  tag {
+    key = "Name"
+    value = "asg-web"
+    propagate_at_launch = true
+  }
+}
+
+data "aws_ami" "amazon_linux2" {
+  most_recent = true
+  filter {
+    name = "name"
+    values = ["amzn2-ami-kernel-5.10-hvm-2.0.20220912.1-x86_64-gp2"]
+  }
+  filter {
+    name = "virtualization-type"
+    values = [ "hvm" ]
+  }
+  owners = [ "137112412989" ]
+}
